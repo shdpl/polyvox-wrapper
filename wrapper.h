@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 
-#define HANDLE int
+#define HANDLE uint32_t
 #define NULL 0
 #ifndef __cplusplus
 #define bool char
@@ -19,43 +19,34 @@ typedef HANDLE PVoxRaycast;
 
 
 //
-#define MATERIALTYPE					uint16_t
-//#define DENSITYTYPE					uint8_t
-#define VOXELTYPE						VOXELTYPE_MATERIAL
+#define VOXELTYPE						uint8_t
+#define EXTRACT_NORMALS					0
+#define EXTRACTORTYPE					EXTRACTORTYPE_CUBIC
 
-#ifdef MATERIALTYPE
-	#ifdef DENSITYTYPE
-		#define VOXELCLASS				MaterialDensityPair< MATERIALTYPE, DENSITYTYPE >
-	#else
-		#define VOXELCLASS				Material< MATERIALTYPE >
-	#endif
-#else
-	#define VOXELCLASS					Density< DENSITYTYPE >
-#endif
-	
 
 //
 #define VOLUMETYPE						VOLUMETYPE_SIMPLE
 
-#define VOLUMETYPE_SIMPLE				SimpleVolume< VOXELCLASS >
-#define VOLUMETYPE_LARGE				LargeVolume< VOXELCLASS >
-#define VOLUMETYPE_RAW					RawVolume< VOXELCLASS >
+#define VOLUMETYPE_SIMPLE				SimpleVolume< VOXELTYPE >
+#define VOLUMETYPE_LARGE				LargeVolume< VOXELTYPE >
+#define VOLUMETYPE_RAW					RawVolume< VOXELTYPE >
 
 
 //
-#define VERTEXTYPE						VERTEXTYPE_POSMAT
-
-#define VERTEXTYPE_POSMATNOR			PositionMaterialNormal
-#define VERTEXTYPE_POSMAT				PositionMaterial
 
 
-//
-#define EXTRACTORTYPE					EXTRACTORTYPE_CUBIC
-
-#if VERTEXTYPE == VERTEXTYPE_POSMAT
-	#define EXTRACTORTYPE_CUBIC			CubicSurfaceExtractor< VOLUMETYPE >
+#if EXTRACT_NORMALS
+	#define VERTEXTYPE					PositionMaterialNormal
 #else
+	#define VERTEXTYPE					PositionMaterial
+#endif
+
+
+//
+#if EXTRACT_NORMALS
 	#define EXTRACTORTYPE_CUBIC			CubicSurfaceExtractorWithNormals< VOLUMETYPE >
+#else
+	#define EXTRACTORTYPE_CUBIC			CubicSurfaceExtractor< VOLUMETYPE >
 #endif
 #define EXTRACTORTYPE_MARCHINGCUBES		MarchingCubesSurfaceExtractor< VOLUMETYPE >
 
@@ -100,36 +91,27 @@ struct PVoxRaycastResult
 typedef struct PVoxRaycastResult PVoxRaycastResult;
 
 
-struct PVoxVoxel
-{
-	uint32_t	material;
-};
-typedef struct PVoxVoxel PVoxVoxel;
-
-
 struct PVoxVertex
 {
-	float material;
 	PVoxVector3DFloat position;
-/*#if VERTEXCLASS == VERTEXCLASS_POSMATNOR
+	float material;
+#if EXTRACT_NORMALS
 	PVoxVector3DFloat normal;
-#endif*/
+#endif
 };
 typedef struct PVoxVertex PVoxVertex;
 
 #define APIEXPORT __declspec(dllexport)
 
-APIEXPORT PVoxAOCalculator pvoxAOCalculatorAdd
+APIEXPORT void pvoxAOCalculate
 (
 	PVoxVolume volume,
 	uint8_t (*result)[3],
 	PVoxRegion region,
 	float fRayLength,
 	uint8_t uNoOfSamplesPerOutputElement,
-	bool (*funcIsTransparent)(PVoxVoxel voxel)
+	bool (*funcIsTransparent)(VOXELTYPE voxel)
 );
-APIEXPORT void pvoxAOCalculatorRemove(PVoxAOCalculator handle);
-APIEXPORT void pvoxAOCalculatorExecute(PVoxAOCalculator handle);
 
 
 APIEXPORT PVoxAStarPathfinder pvoxASPathfinderAdd(
@@ -149,8 +131,8 @@ APIEXPORT void pvoxASPathfinderExecute(PVoxAStarPathfinder handle);
 
 APIEXPORT PVoxVolume pvoxVolumeAdd(PVoxRegion region);
 //
-APIEXPORT PVoxVoxel pvoxVolumeGetBorderValue(PVoxVolume volume);
-APIEXPORT void pvoxVolumeSetBorderValue(PVoxVolume volume, PVoxVoxel tBorder);
+APIEXPORT VOXELTYPE pvoxVolumeGetBorderValue(PVoxVolume volume);
+APIEXPORT void pvoxVolumeSetBorderValue(PVoxVolume volume, VOXELTYPE tBorder);
 //
 APIEXPORT int32_t pvoxVolumeGetWidth(PVoxVolume volume);
 //
@@ -161,8 +143,8 @@ APIEXPORT int32_t pvoxVolumeGetShortestSideLength(PVoxVolume volume);
 //
 APIEXPORT float pvoxVolumeGetDiagonalLength(PVoxVolume volume);
 //
-APIEXPORT PVoxVoxel pvoxVolumeGetVoxelAt(PVoxVolume volume, PVoxVector3DUint32 vec);
-APIEXPORT bool pvoxVolumeSetVoxelAt(PVoxVolume volume, PVoxVector3DUint32 vec, PVoxVoxel tValue);
+APIEXPORT VOXELTYPE pvoxVolumeGetVoxelAt(PVoxVolume volume, PVoxVector3DUint32 vec);
+APIEXPORT bool pvoxVolumeSetVoxelAt(PVoxVolume volume, PVoxVector3DUint32 vec, VOXELTYPE tValue);
 //
 APIEXPORT uint32_t pvoxVolumeCalculateSizeInBytes(PVoxVolume volume);
 //
@@ -192,7 +174,7 @@ APIEXPORT void pvoxSurfaceMeshGetVertices(PVoxSurfaceMesh handle, PVoxVertex res
 //
 APIEXPORT uint32_t pvoxSurfaceMeshGetNoOfNonUniformTrianges(PVoxSurfaceMesh handle);
 APIEXPORT uint32_t pvoxSurfaceMeshGetNoOfUniformTrianges(PVoxSurfaceMesh handle);
-//TODO: getRawVertexData (void)
+APIEXPORT PVoxVertex* pvoxSurfaceMeshGetRawVertexData(PVoxSurfaceMesh handle);
 
 
 APIEXPORT PVoxMeshDecimator pvoxMeshDecimatorAdd(PVoxSurfaceMesh input, PVoxSurfaceMesh output, float fEdgeCollapseThreshold/*=0.95f*/);
